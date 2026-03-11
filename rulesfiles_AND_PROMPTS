@@ -1,0 +1,977 @@
+# ============================================================
+# PARAKEET AI — CURSOR RULES FILE
+# Interview Buddy Platform · Full Frontend Specification
+# ============================================================
+
+## PROJECT OVERVIEW
+Parakeet AI is a real-time AI interview assistant that runs invisibly
+alongside the user during live video interviews. It listens, understands
+context, and surfaces subtle answer suggestions — completely hidden from
+screen-share participants.
+
+---
+
+## 🎯 CORE PRODUCT PRINCIPLES
+
+1. **Screen-Share Invisibility** — The assistant overlay MUST be
+   undetectable when the user shares their screen. Achieve this by:
+   - Rendering the overlay in a **separate Electron BrowserWindow** with
+     `skipTaskbar: true`, `alwaysOnTop: true`, and excluded from screen
+     capture via `setContentProtection(true)` on macOS /
+     `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` on Windows.
+   - Web fallback: render in a Picture-in-Picture window using the
+     **Document Picture-in-Picture API** (Chrome 116+).
+   - Never rely on CSS alone for hiding; OS-level exclusion is mandatory.
+
+2. **Modern & Sleek Aesthetic** — Think Linear.app × Vercel × Arc Browser.
+   Dark-first, glass morphism accents, razor-thin borders, generous
+   whitespace.
+
+3. **Scroll-Driven Animations** — Every marketing page section reveals
+   itself as it enters the viewport. Use the native CSS
+   `@scroll-timeline` / `animation-timeline: scroll()` where supported,
+   with GSAP ScrollTrigger as the progressive-enhancement fallback.
+
+4. **Performance** — Target 60 fps animations. Use `will-change`,
+   `transform`, and `opacity` exclusively for animated properties.
+   No layout-thrashing properties (width, height, top, left) in
+   keyframes.
+
+---
+
+## 🛠 TECH STACK
+
+| Layer | Choice |
+|-------|--------|
+| Framework | **Next.js 14** (App Router) |
+| Language | **TypeScript** (strict mode) |
+| Styling | **Tailwind CSS v3** + CSS custom properties |
+| Animation | **Framer Motion v11** (primary) + GSAP 3 (scroll scenes) |
+| 3D / WebGL | **Three.js r160** via `@react-three/fiber` + `@react-three/drei` |
+| State | **Zustand** (global) + React Context (scoped) |
+| Auth | **Clerk** |
+| Backend | **tRPC** over Next.js API routes |
+| DB | **Supabase** (Postgres + Realtime) |
+| AI | **Anthropic Claude API** (claude-sonnet-4-20250514) |
+| Speech | **Deepgram** live transcription WebSocket |
+| Payments | **Stripe** |
+| Deploy | **Vercel** (web) + **Electron** (desktop overlay) |
+
+---
+
+## 🎨 DESIGN SYSTEM
+
+### Color Palette
+```css
+:root {
+  /* Backgrounds */
+  --bg-void:        #050507;   /* deepest black */
+  --bg-base:        #0a0a0f;   /* page background */
+  --bg-surface:     #111118;   /* cards, panels */
+  --bg-elevated:    #1a1a24;   /* modals, dropdowns */
+  --bg-overlay:     rgba(10,10,15,0.85); /* glass layers */
+
+  /* Brand */
+  --brand-primary:  #7c6aff;   /* parakeet violet */
+  --brand-glow:     #a78bfa;   /* lighter accent */
+  --brand-teal:     #2dd4bf;   /* secondary accent */
+  --brand-emerald:  #34d399;   /* success / positive */
+
+  /* Text */
+  --text-primary:   #f0f0f8;
+  --text-secondary: #8b8ba8;
+  --text-muted:     #4a4a6a;
+  --text-inverse:   #050507;
+
+  /* Borders */
+  --border-subtle:  rgba(255,255,255,0.06);
+  --border-default: rgba(255,255,255,0.10);
+  --border-strong:  rgba(255,255,255,0.18);
+  --border-brand:   rgba(124,106,255,0.40);
+
+  /* Glows */
+  --glow-brand:     0 0 40px rgba(124,106,255,0.25);
+  --glow-teal:      0 0 40px rgba(45,212,191,0.20);
+  --glow-sm:        0 0 12px rgba(124,106,255,0.35);
+}
+```
+
+### Typography
+```css
+/* Font stack */
+--font-sans:   'Inter Variable', 'Inter', system-ui, sans-serif;
+--font-mono:   'JetBrains Mono Variable', 'Fira Code', monospace;
+--font-display:'Cal Sans', 'Inter Variable', sans-serif; /* headings */
+
+/* Scale (clamp for fluid sizing) */
+--text-xs:   clamp(0.69rem, 0.5vw + 0.6rem, 0.75rem);
+--text-sm:   clamp(0.8rem,  0.5vw + 0.7rem, 0.875rem);
+--text-base: clamp(0.9rem,  0.5vw + 0.8rem, 1rem);
+--text-lg:   clamp(1rem,    0.8vw + 0.85rem, 1.125rem);
+--text-xl:   clamp(1.1rem,  1vw + 0.9rem, 1.25rem);
+--text-2xl:  clamp(1.3rem,  1.5vw + 1rem, 1.5rem);
+--text-3xl:  clamp(1.6rem,  2vw + 1.1rem, 1.875rem);
+--text-4xl:  clamp(2rem,    3vw + 1.2rem, 2.5rem);
+--text-5xl:  clamp(2.5rem,  5vw + 1rem, 3.5rem);
+--text-hero: clamp(3rem,    7vw + 1rem, 5.5rem);
+```
+
+### Spacing System
+```css
+/* 4px base unit */
+--space-1: 4px;  --space-2: 8px;   --space-3: 12px; --space-4: 16px;
+--space-5: 20px; --space-6: 24px;  --space-8: 32px; --space-10: 40px;
+--space-12: 48px;--space-16: 64px; --space-20: 80px;--space-24: 96px;
+--space-32: 128px;
+```
+
+### Radii & Shadows
+```css
+--radius-sm: 6px;  --radius-md: 10px; --radius-lg: 16px;
+--radius-xl: 24px; --radius-2xl: 32px;--radius-full: 9999px;
+
+--shadow-sm:  0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
+--shadow-md:  0 4px 16px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.4);
+--shadow-lg:  0 12px 40px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.5);
+--shadow-brand: 0 8px 32px rgba(124,106,255,0.30);
+```
+
+---
+
+## 📐 COMPONENT ARCHITECTURE
+
+### File Structure
+```
+src/
+├── app/                          # Next.js App Router
+│   ├── (marketing)/              # Route group — public pages
+│   │   ├── page.tsx              # Landing / Hero
+│   │   ├── pricing/page.tsx
+│   │   ├── features/page.tsx
+│   │   ├── how-it-works/page.tsx
+│   │   └── blog/
+│   ├── (auth)/
+│   │   ├── sign-in/page.tsx
+│   │   └── sign-up/page.tsx
+│   ├── (app)/                    # Authenticated app shell
+│   │   ├── dashboard/page.tsx
+│   │   ├── session/[id]/page.tsx # Live interview session
+│   │   ├── history/page.tsx
+│   │   └── settings/page.tsx
+│   ├── layout.tsx
+│   └── globals.css
+│
+├── components/
+│   ├── ui/                       # Design system primitives
+│   │   ├── Button.tsx
+│   │   ├── Card.tsx
+│   │   ├── Badge.tsx
+│   │   ├── GlassPanel.tsx
+│   │   ├── GradientText.tsx
+│   │   ├── Noise.tsx             # SVG noise texture overlay
+│   │   └── ...
+│   ├── marketing/                # Landing page sections
+│   │   ├── HeroSection.tsx
+│   │   ├── FeaturesSection.tsx
+│   │   ├── HowItWorksSection.tsx
+│   │   ├── SocialProofSection.tsx
+│   │   ├── PricingSection.tsx
+│   │   ├── FaqSection.tsx
+│   │   └── CtaSection.tsx
+│   ├── overlay/                  # The invisible interview overlay
+│   │   ├── OverlayShell.tsx
+│   │   ├── TranscriptFeed.tsx
+│   │   ├── SuggestionBubble.tsx
+│   │   ├── ConfidenceBar.tsx
+│   │   └── MiniControls.tsx
+│   ├── session/
+│   │   ├── SessionSetup.tsx
+│   │   ├── LiveSession.tsx
+│   │   └── PostSession.tsx
+│   └── shared/
+│       ├── Navbar.tsx
+│       ├── Footer.tsx
+│       └── AnimatedBackground.tsx
+│
+├── lib/
+│   ├── claude.ts                 # Anthropic SDK wrapper
+│   ├── deepgram.ts               # Speech-to-text
+│   ├── overlay.ts                # PiP / Electron bridge
+│   └── utils.ts
+│
+├── hooks/
+│   ├── useScrollAnimation.ts
+│   ├── useTranscription.ts
+│   ├── useAISuggestions.ts
+│   └── useOverlayVisibility.ts
+│
+└── store/
+    ├── sessionStore.ts
+    └── overlayStore.ts
+```
+
+---
+
+## 🌐 PAGE SPECIFICATIONS
+
+### 1. Landing Page (`/`)
+
+**Layout**: Full-viewport sections, each ≥ 100vh, scroll-snapping optional.
+
+**Sections (in order)**:
+
+#### § Hero Section
+- **Background**: Animated 3D mesh / particle field using `@react-three/fiber`.
+  Subtle floating orbs with radial gradient `--brand-primary` → transparent.
+  Add `<Noise opacity={0.03} />` grain overlay.
+- **Headline**: Large display font, white, with gradient shimmer animation
+  on key words ("invisible", "AI co-pilot"). Use CSS `background-clip: text`.
+  Example copy: *"Your AI co-pilot. Completely invisible."*
+- **Subheadline**: `--text-secondary`, max-width 560px, centered.
+- **CTA Group**: Primary button (filled, brand violet, glow on hover) +
+  Ghost button ("Watch demo"). Buttons animate in with `y: 20 → 0` fade.
+- **Social proof ticker**: Small pill with `-avatar-stack-` + "Trusted by
+  3,400+ candidates at Google, Meta, Stripe…" scrolling marquee.
+- **Product mockup**: Floating laptop/phone mockup showing overlay UI.
+  Parallax depth on scroll (`useTransform` from Framer Motion).
+- **Scroll indicator**: Animated chevron bounce at bottom.
+
+#### § Feature Bento Grid
+- 4–6 cards in a CSS Grid bento layout (asymmetric sizing).
+- Cards use `GlassPanel` component: `backdrop-filter: blur(12px)`,
+  `background: rgba(255,255,255,0.04)`, `border: 1px solid --border-default`.
+- Each card has an animated icon (Lottie or CSS), title, short copy.
+- On scroll-enter: cards stagger in with `opacity: 0 → 1`, `y: 40 → 0`,
+  each delayed by `index * 80ms`.
+
+**Features to highlight**:
+1. 🎙 Live transcription (Deepgram)
+2. 🤖 Real-time AI suggestions
+3. 👁 Invisible to screen share
+4. 📊 Post-interview analytics
+5. 🔒 End-to-end encrypted
+6. ⚡ < 300ms response latency
+
+#### § How It Works
+- 3-step horizontal stepper with animated connecting line.
+- Step illustration: minimal SVG animation per step.
+- Steps: *Install → Join Interview → Parakeet assists invisibly*
+- Timeline line draws from left to right as section scrolls into view
+  (SVG `stroke-dashoffset` animation).
+
+#### § Live Demo / Product Showcase
+- Full-bleed dark section with a **animated product mockup** (browser
+  window chrome + overlay UI inside).
+- Auto-playing looped animation showing the overlay receiving a question,
+  transcribing, and suggesting an answer.
+- Use Framer Motion `AnimatePresence` for the typing / suggestion reveal.
+
+#### § Social Proof
+- Logo strip: grayscale logos of companies users have interviewed at,
+  fade-in marquee scrolling left.
+- 3-column testimonial cards with avatar, name, role, quote.
+- Star rating display.
+
+#### § Pricing
+- 3-tier card layout: Free, Pro ($19/mo), Team ($49/mo).
+- Pro card has glow border (`--border-brand`), "Most Popular" badge.
+- Feature comparison rows, animated checkmarks.
+- Annual/monthly toggle with smooth price transition.
+
+#### § FAQ
+- Accordion component, smooth height animation with Framer Motion
+  `AnimatePresence + layout`.
+
+#### § CTA Section
+- Full-width gradient section: `radial-gradient` from `--brand-primary`.
+- Large headline, single CTA button, optional email capture input.
+
+---
+
+### 2. Dashboard (`/dashboard`)
+
+**Layout**: Sidebar (240px) + Main content area.
+
+**Sidebar**:
+- Logo + wordmark at top.
+- Nav items with active indicator (left border, brand color).
+- User avatar + plan badge at bottom.
+- Collapsible to icon-only on mobile.
+
+**Main Content Sections**:
+- **Welcome banner**: "Ready for your next interview?" with quick-start CTA.
+- **Stats row**: 4 metric cards — Sessions this month, Avg confidence score,
+  Questions answered, Time saved.
+- **Recent Sessions table**: Sortable, with company name, role, date,
+  score badge, "View report" action.
+- **Upcoming prep tips**: AI-generated, contextual advice cards.
+
+---
+
+### 3. Live Session Page (`/session/[id]`)
+
+**This is the core product screen.**
+
+**Layout**: Split — left 60% is the user's interview space (blank / minimal),
+right 40% is the Parakeet panel (only visible to user, hidden from share).
+
+**Parakeet Panel**:
+```
+┌─────────────────────────────────┐
+│  🟢 LIVE  ·  00:12:34           │
+├─────────────────────────────────┤
+│  TRANSCRIPT                     │
+│  ┌─────────────────────────┐   │
+│  │ Interviewer: Tell me     │   │
+│  │ about a time you...      │   │
+│  └─────────────────────────┘   │
+├─────────────────────────────────┤
+│  💡 SUGGESTION                  │
+│  ┌─────────────────────────┐   │
+│  │ Use the STAR method.     │   │
+│  │ Situation: [context]     │   │
+│  │ Task: ...                │   │
+│  └─────────────────────────┘   │
+├─────────────────────────────────┤
+│  Confidence ████████░░ 82%      │
+│  [Pause] [Copy] [Next Tip]      │
+└─────────────────────────────────┘
+```
+
+- Transcript auto-scrolls as words arrive (smooth scroll behavior).
+- Suggestion text streams in word by word (typewriter effect).
+- Confidence bar animates with easing.
+- Panel background: `--bg-overlay` with blur — very dark, low contrast to
+  not distract user visually during interview.
+
+**CRITICAL - Overlay Invisibility Implementation**:
+```typescript
+// hooks/useOverlayVisibility.ts
+export function useOverlayVisibility() {
+  const [isHidden, setIsHidden] = useState(false);
+
+  useEffect(() => {
+    // Method 1: Document Picture-in-Picture (web)
+    if ('documentPictureInPicture' in window) {
+      // Open Parakeet panel in PiP window — excluded from screen capture
+      const pipWindow = await window.documentPictureInPicture.requestWindow({
+        width: 400, height: 600,
+      });
+      // Move overlay DOM into PiP window
+    }
+
+    // Method 2: Electron (desktop app)
+    if (window.__ELECTRON__) {
+      window.electronAPI.setContentProtection(true);
+      // Sets WDA_EXCLUDEFROMCAPTURE on Windows, equivalent on macOS
+    }
+  }, []);
+}
+```
+
+---
+
+### 4. Post-Session Report (`/session/[id]/report`)
+
+- **Score overview**: Large circular progress gauge (SVG, animated on mount).
+- **Transcript replay**: Full scrollable transcript with highlighted
+  AI suggestion moments.
+- **Question analysis**: Per-question breakdown with confidence scores,
+  keywords used, suggested improvements.
+- **Export options**: PDF report, share link.
+
+---
+
+### 5. Settings (`/settings`)
+
+- Tabbed layout: General, Audio, AI, Privacy, Billing.
+- Each tab slides in with `x: 20 → 0` animation.
+- Form inputs use custom styled components matching the dark theme.
+- **Privacy tab**: Toggle for data retention, delete account, export data.
+
+---
+
+## ✨ ANIMATION RULES
+
+### Scroll Animations
+Every above-the-fold section uses this base pattern:
+
+```typescript
+// hooks/useScrollAnimation.ts
+import { useInView } from 'framer-motion';
+import { useRef } from 'react';
+
+export const scrollReveal = {
+  hidden: { opacity: 0, y: 40 },
+  visible: (i = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.65,
+      delay: i * 0.08,
+      ease: [0.16, 1, 0.3, 1], // expo out
+    },
+  }),
+};
+
+// Usage in components:
+// <motion.div variants={scrollReveal} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }}>
+```
+
+### Micro-interactions
+- **Buttons**: `whileHover={{ scale: 1.02 }}`, `whileTap={{ scale: 0.98 }}`,
+  glow shadow transition 200ms.
+- **Cards**: `whileHover={{ y: -4, borderColor: 'var(--border-brand)' }}`,
+  200ms ease.
+- **Links**: Underline draws in on hover using `scaleX` transform.
+- **Modals**: Scale from `0.95 → 1`, opacity `0 → 1`, 200ms ease-out.
+- **Page transitions**: Fade + slight Y translate between routes.
+
+### Background Animations
+- **Hero**: Three.js particle mesh, subtle rotation, react to mouse position
+  with `lerp` smoothing. Max 5000 particles, optimized with `BufferGeometry`.
+- **Ambient orbs**: CSS `@keyframes` floating blobs with blur,
+  positioned absolutely, `pointer-events: none`, `z-index: 0`.
+- **Grid lines**: SVG grid with `opacity: 0.04`, radial-gradient mask
+  fading edges.
+
+### Loading States
+- Skeleton screens matching layout shape, animated shimmer:
+  ```css
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to   { background-position:  200% 0; }
+  }
+  .skeleton {
+    background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-elevated) 50%, var(--bg-surface) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  ```
+
+---
+
+## 🧩 REUSABLE COMPONENT SPECS
+
+### `<Button />`
+```typescript
+interface ButtonProps {
+  variant: 'primary' | 'secondary' | 'ghost' | 'danger';
+  size: 'sm' | 'md' | 'lg';
+  glow?: boolean;       // adds brand glow shadow
+  loading?: boolean;    // spinner state
+  icon?: ReactNode;     // left icon
+}
+```
+Primary: `bg-[--brand-primary]`, white text, `box-shadow: var(--glow-sm)` on hover.
+Secondary: Glass background, brand border.
+Ghost: Text only, brand color on hover.
+
+### `<GlassPanel />`
+```typescript
+// backdrop-filter: blur(12px) saturate(1.2)
+// background: rgba(255,255,255,0.04)
+// border: 1px solid var(--border-default)
+// border-radius: var(--radius-lg)
+```
+
+### `<GradientText />`
+```typescript
+// background: linear-gradient(135deg, var(--brand-glow), var(--brand-teal))
+// -webkit-background-clip: text
+// color: transparent
+```
+
+### `<Badge />`
+Variants: `default`, `success`, `warning`, `error`, `brand`.
+Pill shape, small font, colored dot indicator.
+
+### `<Noise />`
+SVG turbulence filter overlay, `opacity: 0.025–0.04`, `pointer-events: none`.
+Adds organic texture to flat surfaces.
+
+---
+
+## 📱 RESPONSIVE BEHAVIOR
+
+| Breakpoint | Width | Behavior |
+|------------|-------|----------|
+| `xs` | < 480px | Single column, reduced animations |
+| `sm` | 480–768px | Single column, full animations |
+| `md` | 768–1024px | 2-column grid begins |
+| `lg` | 1024–1280px | Full layout, sidebar appears |
+| `xl` | 1280–1536px | Max content width cap |
+| `2xl` | > 1536px | Ultra-wide: center-lock content |
+
+- All font sizes use `clamp()` for fluid scaling.
+- Navigation collapses to hamburger at `< 768px`.
+- Session overlay stacks vertically on mobile.
+- Reduce motion: wrap all Framer Motion animations in:
+  ```typescript
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  ```
+
+---
+
+## ♿ ACCESSIBILITY
+
+- All interactive elements have visible focus rings:
+  `outline: 2px solid var(--brand-primary); outline-offset: 2px`.
+- Color contrast minimum WCAG AA (4.5:1 for text, 3:1 for UI).
+- All animated elements respect `prefers-reduced-motion`.
+- Keyboard navigation fully supported (tab order logical, escape closes modals).
+- ARIA labels on icon-only buttons and overlay status elements.
+- Transcript has `aria-live="polite"` for screen reader updates.
+
+---
+
+## 🔒 PRIVACY & SECURITY RULES
+
+- **Never** log audio or transcripts to third-party analytics.
+- All AI API calls go through Next.js API routes — API keys never exposed to client.
+- Audio processing happens locally via Web Audio API before sending to Deepgram.
+- Session data stored encrypted in Supabase with row-level security.
+- Screen capture exclusion is a non-negotiable product requirement — test
+  on every OS/browser combination before shipping.
+
+---
+
+## 🚀 PERFORMANCE RULES
+
+- **Lighthouse target**: Performance ≥ 90, Accessibility ≥ 95, Best Practices ≥ 95.
+- Lazy-load all below-fold sections with `React.lazy + Suspense`.
+- Three.js scene loaded only on hero section mount, destroyed on unmount.
+- Images: Next.js `<Image>` with `priority` only on LCP element.
+- Fonts: `font-display: swap`, subset to Latin, preload critical weights.
+- Bundle: No component over 50KB gzipped. Code-split at route level.
+- Web Vitals targets: LCP < 2.5s, FID < 100ms, CLS < 0.1.
+
+---
+
+## 🧪 CURSOR GENERATION INSTRUCTIONS
+
+When generating any page or component, Cursor must:
+
+1. **Always** import and use design tokens from `globals.css` CSS variables.
+2. **Always** wrap animated sections in `<motion.div>` with `scrollReveal` variants.
+3. **Always** add `viewport={{ once: true }}` to scroll animations.
+4. **Never** use hardcoded color hex values in component files — use CSS vars.
+5. **Never** use `margin` or `padding` in Tailwind that conflicts with the 4px grid.
+6. **Always** add hover states, focus states, and active states to interactive elements.
+7. **Always** include loading skeletons for async data.
+8. **Always** handle empty states with illustrated placeholders.
+9. **Always** add `aria-label` to icon-only buttons.
+10. Use `cn()` utility (clsx + tailwind-merge) for conditional class merging.
+11. Export components as named exports; pages as default exports.
+12. Place all API calls in `lib/` or tRPC routers — never inline in components.
+13. Overlay components must check `useOverlayVisibility()` hook before rendering.
+14. All TypeScript types in `types/` directory, no `any` types.
+
+---
+
+## 📋 NAMING CONVENTIONS
+
+- **Components**: PascalCase (`HeroSection.tsx`)
+- **Hooks**: camelCase prefixed with `use` (`useTranscription.ts`)
+- **Stores**: camelCase suffixed with `Store` (`sessionStore.ts`)
+- **Types**: PascalCase, suffix with type role (`SessionConfig`, `UserProfile`)
+- **CSS vars**: kebab-case prefixed with semantic group (`--text-primary`, `--bg-surface`)
+- **Test files**: colocated, `.test.tsx` suffix
+
+---
+
+## 🔗 KEY DEPENDENCIES (package.json)
+
+```json
+{
+  "dependencies": {
+    "next": "14.x",
+    "react": "18.x",
+    "framer-motion": "^11.0.0",
+    "gsap": "^3.12.0",
+    "@react-three/fiber": "^8.15.0",
+    "@react-three/drei": "^9.92.0",
+    "three": "^0.160.0",
+    "zustand": "^4.5.0",
+    "@clerk/nextjs": "^5.0.0",
+    "@trpc/server": "^11.0.0",
+    "@trpc/client": "^11.0.0",
+    "@anthropic-ai/sdk": "^0.24.0",
+    "@deepgram/sdk": "^3.0.0",
+    "tailwindcss": "^3.4.0",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.2.0",
+    "@supabase/supabase-js": "^2.40.0",
+    "lucide-react": "^0.363.0",
+    "class-variance-authority": "^0.7.0"
+  }
+}
+```
+
+---
+
+*This rules file governs all frontend generation for Parakeet AI.
+Every component, page, and utility generated by Cursor must comply
+with these specifications to ensure design consistency, performance,
+and the core product promise of invisible AI assistance.*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+You are given a task to integrate an existing React component in the codebase
+
+The codebase should support:
+- shadcn project structure  
+- Tailwind CSS
+- Typescript
+
+If it doesn't, provide instructions on how to setup project via shadcn CLI, install Tailwind or Typescript.
+
+Determine the default path for components and styles. 
+If default path for components is not /components/ui, provide instructions on why it's important to create this folder
+Copy-paste this component to /components/ui folder:
+```tsx
+splite.tsx
+'use client'
+
+import { Suspense, lazy } from 'react'
+const Spline = lazy(() => import('@splinetool/react-spline'))
+
+interface SplineSceneProps {
+  scene: string
+  className?: string
+}
+
+export function SplineScene({ scene, className }: SplineSceneProps) {
+  return (
+    <Suspense 
+      fallback={
+        <div className="w-full h-full flex items-center justify-center">
+          <span className="loader"></span>
+        </div>
+      }
+    >
+      <Spline
+        scene={scene}
+        className={className}
+      />
+    </Suspense>
+  )
+}
+
+demo.tsx
+'use client'
+
+import { SplineScene } from "@/components/ui/splite";
+import { Card } from "@/components/ui/card"
+import { Spotlight } from "@/components/ui/spotlight"
+ 
+export function SplineSceneBasic() {
+  return (
+    <Card className="w-full h-[500px] bg-black/[0.96] relative overflow-hidden">
+      <Spotlight
+        className="-top-40 left-0 md:left-60 md:-top-20"
+        fill="white"
+      />
+      
+      <div className="flex h-full">
+        {/* Left content */}
+        <div className="flex-1 p-8 relative z-10 flex flex-col justify-center">
+          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-neutral-50 to-neutral-400">
+            Interactive 3D
+          </h1>
+          <p className="mt-4 text-neutral-300 max-w-lg">
+            Bring your UI to life with beautiful 3D scenes. Create immersive experiences 
+            that capture attention and enhance your design.
+          </p>
+        </div>
+
+        {/* Right content */}
+        <div className="flex-1 relative">
+          <SplineScene 
+            scene="https://prod.spline.design/kZDDjO5HuC9GJUM2/scene.splinecode"
+            className="w-full h-full"
+          />
+        </div>
+      </div>
+    </Card>
+  )
+}
+```
+
+Copy-paste these files for dependencies:
+```tsx
+aceternity/spotlight
+import React from "react";
+import { cn } from "@/lib/utils";
+
+type SpotlightProps = {
+  className?: string;
+  fill?: string;
+};
+
+export const Spotlight = ({ className, fill }: SpotlightProps) => {
+  return (
+    <svg
+      className={cn(
+        "animate-spotlight pointer-events-none absolute z-[1]  h-[169%] w-[138%] lg:w-[84%] opacity-0",
+        className
+      )}
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 3787 2842"
+      fill="none"
+    >
+      <g filter="url(#filter)">
+        <ellipse
+          cx="1924.71"
+          cy="273.501"
+          rx="1924.71"
+          ry="273.501"
+          transform="matrix(-0.822377 -0.568943 -0.568943 0.822377 3631.88 2291.09)"
+          fill={fill || "white"}
+          fillOpacity="0.21"
+        ></ellipse>
+      </g>
+      <defs>
+        <filter
+          id="filter"
+          x="0.860352"
+          y="0.838989"
+          width="3785.16"
+          height="2840.26"
+          filterUnits="userSpaceOnUse"
+          colorInterpolationFilters="sRGB"
+        >
+          <feFlood floodOpacity="0" result="BackgroundImageFix"></feFlood>
+          <feBlend
+            mode="normal"
+            in="SourceGraphic"
+            in2="BackgroundImageFix"
+            result="shape"
+          ></feBlend>
+          <feGaussianBlur
+            stdDeviation="151"
+            result="effect1_foregroundBlur_1065_8"
+          ></feGaussianBlur>
+        </filter>
+      </defs>
+    </svg>
+  );
+};
+
+```
+```tsx
+ibelick/spotlight
+'use client';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
+import { motion, useSpring, useTransform, SpringOptions } from 'framer-motion';
+import { cn } from '@/lib/utils';
+
+type SpotlightProps = {
+  className?: string;
+  size?: number;
+  springOptions?: SpringOptions;
+};
+
+export function Spotlight({
+  className,
+  size = 200,
+  springOptions = { bounce: 0 },
+}: SpotlightProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [parentElement, setParentElement] = useState<HTMLElement | null>(null);
+
+  const mouseX = useSpring(0, springOptions);
+  const mouseY = useSpring(0, springOptions);
+
+  const spotlightLeft = useTransform(mouseX, (x) => `${x - size / 2}px`);
+  const spotlightTop = useTransform(mouseY, (y) => `${y - size / 2}px`);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      const parent = containerRef.current.parentElement;
+      if (parent) {
+        parent.style.position = 'relative';
+        parent.style.overflow = 'hidden';
+        setParentElement(parent);
+      }
+    }
+  }, []);
+
+  const handleMouseMove = useCallback(
+    (event: MouseEvent) => {
+      if (!parentElement) return;
+      const { left, top } = parentElement.getBoundingClientRect();
+      mouseX.set(event.clientX - left);
+      mouseY.set(event.clientY - top);
+    },
+    [mouseX, mouseY, parentElement]
+  );
+
+  useEffect(() => {
+    if (!parentElement) return;
+
+    parentElement.addEventListener('mousemove', handleMouseMove);
+    parentElement.addEventListener('mouseenter', () => setIsHovered(true));
+    parentElement.addEventListener('mouseleave', () => setIsHovered(false));
+
+    return () => {
+      parentElement.removeEventListener('mousemove', handleMouseMove);
+      parentElement.removeEventListener('mouseenter', () => setIsHovered(true));
+      parentElement.removeEventListener('mouseleave', () =>
+        setIsHovered(false)
+      );
+    };
+  }, [parentElement, handleMouseMove]);
+
+  return (
+    <motion.div
+      ref={containerRef}
+      className={cn(
+        'pointer-events-none absolute rounded-full bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops),transparent_80%)] blur-xl transition-opacity duration-200',
+        'from-zinc-50 via-zinc-100 to-zinc-200',
+        isHovered ? 'opacity-100' : 'opacity-0',
+        className
+      )}
+      style={{
+        width: size,
+        height: size,
+        left: spotlightLeft,
+        top: spotlightTop,
+      }}
+    />
+  );
+}
+
+```
+```tsx
+shadcn/card
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      className,
+    )}
+    {...props}
+  />
+))
+Card.displayName = "Card"
+
+const CardHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    {...props}
+  />
+))
+CardHeader.displayName = "CardHeader"
+
+const CardTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn(
+      "text-2xl font-semibold leading-none tracking-tight",
+      className,
+    )}
+    {...props}
+  />
+))
+CardTitle.displayName = "CardTitle"
+
+const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+CardDescription.displayName = "CardDescription"
+
+const CardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+))
+CardContent.displayName = "CardContent"
+
+const CardFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center p-6 pt-0", className)}
+    {...props}
+  />
+))
+CardFooter.displayName = "CardFooter"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+
+```
+
+Install NPM dependencies:
+```bash
+@splinetool/runtime, @splinetool/react-spline, framer-motion
+```
+
+Implementation Guidelines
+ 1. Analyze the component structure and identify all required dependencies
+ 2. Review the component's argumens and state
+ 3. Identify any required context providers or hooks and install them
+ 4. Questions to Ask
+ - What data/props will be passed to this component?
+ - Are there any specific state management requirements?
+ - Are there any required assets (images, icons, etc.)?
+ - What is the expected responsive behavior?
+ - What is the best place to use this component in the app?
+
+Steps to integrate
+ 0. Copy paste all the code above in the correct directories
+ 1. Install external dependencies
+ 2. Fill image assets with Unsplash stock images you know exist
+ 3. Use lucide-react icons for svgs or logos if component requires them
