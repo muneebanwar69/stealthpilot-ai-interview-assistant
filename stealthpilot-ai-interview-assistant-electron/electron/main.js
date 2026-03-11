@@ -60,9 +60,11 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 // Initialize API keys from environment if not already set
 if (!store.get('geminiApiKey')) {
-    const geminiKey = process.env.GEMINI_API_KEY || 'AIzaSyCTTUUdXdW1EJ_T1nQRH6vtPqnxW_Na7Lw';
-    store.set('geminiApiKey', geminiKey);
-    console.log('[Init] Gemini API key loaded from environment');
+    const geminiKey = process.env.GEMINI_API_KEY || '';
+    if (geminiKey) {
+        store.set('geminiApiKey', geminiKey);
+        console.log('[Init] Gemini API key loaded from environment');
+    }
 }
 if (!store.get('groqApiKey')) {
     const groqKey = process.env.GROQ_API_KEY || '';

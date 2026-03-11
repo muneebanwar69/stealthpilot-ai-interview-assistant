@@ -88,7 +88,7 @@ Password: admin123
 
 ### **Backend:**
 - ✅ Running on http://localhost:8000
-- ✅ Gemini API key configured (AIzaSyDmY2oSH555iMXAJfVXkR8-pXxwmeDAXCU)
+- ✅ Gemini API key configured (set via environment variable)
 - ✅ WebSocket endpoint: ws://localhost:8000/api/ws/{session_id}
 - ✅ All admin endpoints working
 

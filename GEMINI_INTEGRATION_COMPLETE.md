@@ -14,7 +14,7 @@ Your app now uses **Gemini 2.0 Flash Experimental** with native audio processing
 
 Your Gemini API key has been added to the backend:
 ```
-GEMINI_API_KEY=AIzaSyDmY2oSH555iMXAJfVXkR8-pXxwmeDAXCU
+GEMINI_API_KEY=your-gemini-api-key
 AI_PROVIDER=gemini
 ```
 
@@ -284,7 +284,7 @@ If you encounter issues:
    ```bash
    curl https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent \
      -H "Content-Type: application/json" \
-     -H "x-goog-api-key: AIzaSyDmY2oSH555iMXAJfVXkR8-pXxwmeDAXCU" \
+       -H "x-goog-api-key: your-gemini-api-key" \
      -d '{"contents":[{"parts":[{"text":"Say hello"}]}]}'
    ```
 
